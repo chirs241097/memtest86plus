@@ -38,66 +38,74 @@ static void ich5_get_smb(void);
 static uint8_t ich5_process(void);
 static uint8_t ich5_read_spd_byte(uint8_t adr, uint16_t cmd);
 
-static const struct pci_smbus_controller smbcontrollers[] = {
-    {0x8086, 0x24C3, "82801DB (ICH4)",          ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x24D3, "82801E (ICH5)",           ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x25A4, "6300ESB",                 ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x266A, "82801F (ICH6)",           ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x269B, "6310ESB/6320ESB",         ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x27DA, "82801G (ICH7)",           ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x283E, "82801H (ICH8)",           ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x2930, "82801I (ICH9)",           ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x5032, "EP80579 (Tolapai)",       ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x3A30, "ICH10",                   ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x3A60, "ICH10",                   ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x3B30, "5/3400 Series (PCH)",     ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1C22, "6 Series (PCH)",          ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1D22, "Patsburg (PCH)",          ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1D70, "Patsburg (PCH) IDF",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1D71, "Patsburg (PCH) IDF",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1D72, "Patsburg (PCH) IDF",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x2330, "DH89xxCC (PCH)",          ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1E22, "Panther Point (PCH)",     ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x8C22, "Lynx Point (PCH)",        ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x9C22, "Lynx Point-LP (PCH)",     ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1F3C, "Avoton (SOC)",            ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x8D22, "Wellsburg (PCH)",         ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x8D7D, "Wellsburg (PCH) MS",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x8D7E, "Wellsburg (PCH) MS",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x8D7F, "Wellsburg (PCH) MS",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x23B0, "Coleto Creek (PCH)",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x8CA2, "Wildcat Point (PCH)",     ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x9CA2, "Wildcat Point-LP (PCH)",  ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x0F12, "BayTrail (SOC)",          ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x2292, "Braswell (SOC)",          ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0xA123, "Sunrise Point-H (PCH) ",  ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x9D23, "Sunrise Point-LP (PCH)",  ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x19DF, "Denverton  (SOC)",        ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x1BC9, "Emmitsburg (PCH)",        ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0xA1A3, "Lewisburg (PCH)",         ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0xA223, "Lewisburg Super (PCH)",   ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0xA2A3, "Kaby Lake (PCH-H)",       ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x31D4, "Gemini Lake (SOC)",       ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0xA323, "Cannon Lake-H (PCH)",     ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x9DA3, "Cannon Lake-LP (PCH)",    ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x18DF, "Cedar Fork (PCH)",        ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x34A3, "Ice Lake-LP (PCH)",       ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x38A3, "Ice Lake-N (PCH)",        ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x02A3, "Comet Lake (PCH)",        ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x06A3, "Comet Lake-H (PCH)",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x4B23, "Elkhart Lake (PCH)",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0xA0A3, "Tiger Lake-LP (PCH)",     ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x43A3, "Tiger Lake-H (PCH)",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x4DA3, "Jasper Lake (SOC)",       ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0xA3A3, "Comet Lake-V (PCH)",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x7AA3, "Alder Lake-S (PCH)",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x51A3, "Alder Lake-P (PCH)",      ich5_get_smb, ich5_read_spd_byte},
-    {0x8086, 0x54A3, "Alder Lake-M (PCH)",      ich5_get_smb, ich5_read_spd_byte},
+#define SMBC_OPS_IDX_ICH5    (1)
+#define SMBC_OPS_IDX_FCH_ZEN (2)
 
-     // AMD SMBUS
-     {0x1022, 0x780B, "AMD FCH", NULL, NULL},
-     {0x1022, 0x790B, "AMD FCH (Zen)",          fch_zen_get_smb, ich5_read_spd_byte},
-     {0, 0, "", NULL, NULL}
+static const struct pci_smbus_controller_ops smbcontrollerops[] = {
+    { NULL, NULL },
+    { ich5_get_smb,    ich5_read_spd_byte },
+    { fch_zen_get_smb, ich5_read_spd_byte }
+};
+
+static const struct pci_smbus_controller smbcontrollers[] = {
+    {0x8086, 0x24C3,    SMBC_OPS_IDX_ICH5, "82801DB (ICH4)"          },
+    {0x8086, 0x24D3,    SMBC_OPS_IDX_ICH5, "82801E (ICH5)"           },
+    {0x8086, 0x25A4,    SMBC_OPS_IDX_ICH5, "6300ESB"                 },
+    {0x8086, 0x266A,    SMBC_OPS_IDX_ICH5, "82801F (ICH6)"           },
+    {0x8086, 0x269B,    SMBC_OPS_IDX_ICH5, "6310ESB/6320ESB"         },
+    {0x8086, 0x27DA,    SMBC_OPS_IDX_ICH5, "82801G (ICH7)"           },
+    {0x8086, 0x283E,    SMBC_OPS_IDX_ICH5, "82801H (ICH8)"           },
+    {0x8086, 0x2930,    SMBC_OPS_IDX_ICH5, "82801I (ICH9)"           },
+    {0x8086, 0x5032,    SMBC_OPS_IDX_ICH5, "EP80579 (Tolapai)"       },
+    {0x8086, 0x3A30,    SMBC_OPS_IDX_ICH5, "ICH10"                   },
+    {0x8086, 0x3A60,    SMBC_OPS_IDX_ICH5, "ICH10"                   },
+    {0x8086, 0x3B30,    SMBC_OPS_IDX_ICH5, "5/3400 Series (PCH)"     },
+    {0x8086, 0x1C22,    SMBC_OPS_IDX_ICH5, "6 Series (PCH)"          },
+    {0x8086, 0x1D22,    SMBC_OPS_IDX_ICH5, "Patsburg (PCH)"          },
+    {0x8086, 0x1D70,    SMBC_OPS_IDX_ICH5, "Patsburg (PCH) IDF"      },
+    {0x8086, 0x1D71,    SMBC_OPS_IDX_ICH5, "Patsburg (PCH) IDF"      },
+    {0x8086, 0x1D72,    SMBC_OPS_IDX_ICH5, "Patsburg (PCH) IDF"      },
+    {0x8086, 0x2330,    SMBC_OPS_IDX_ICH5, "DH89xxCC (PCH)"          },
+    {0x8086, 0x1E22,    SMBC_OPS_IDX_ICH5, "Panther Point (PCH)"     },
+    {0x8086, 0x8C22,    SMBC_OPS_IDX_ICH5, "Lynx Point (PCH)"        },
+    {0x8086, 0x9C22,    SMBC_OPS_IDX_ICH5, "Lynx Point-LP (PCH)"     },
+    {0x8086, 0x1F3C,    SMBC_OPS_IDX_ICH5, "Avoton (SOC)"            },
+    {0x8086, 0x8D22,    SMBC_OPS_IDX_ICH5, "Wellsburg (PCH)"         },
+    {0x8086, 0x8D7D,    SMBC_OPS_IDX_ICH5, "Wellsburg (PCH) MS"      },
+    {0x8086, 0x8D7E,    SMBC_OPS_IDX_ICH5, "Wellsburg (PCH) MS"      },
+    {0x8086, 0x8D7F,    SMBC_OPS_IDX_ICH5, "Wellsburg (PCH) MS"      },
+    {0x8086, 0x23B0,    SMBC_OPS_IDX_ICH5, "Coleto Creek (PCH)"      },
+    {0x8086, 0x8CA2,    SMBC_OPS_IDX_ICH5, "Wildcat Point (PCH)"     },
+    {0x8086, 0x9CA2,    SMBC_OPS_IDX_ICH5, "Wildcat Point-LP (PCH)"  },
+    {0x8086, 0x0F12,    SMBC_OPS_IDX_ICH5, "BayTrail (SOC)"          },
+    {0x8086, 0x2292,    SMBC_OPS_IDX_ICH5, "Braswell (SOC)"          },
+    {0x8086, 0xA123,    SMBC_OPS_IDX_ICH5, "Sunrise Point-H (PCH) "  },
+    {0x8086, 0x9D23,    SMBC_OPS_IDX_ICH5, "Sunrise Point-LP (PCH)"  },
+    {0x8086, 0x19DF,    SMBC_OPS_IDX_ICH5, "Denverton  (SOC)"        },
+    {0x8086, 0x1BC9,    SMBC_OPS_IDX_ICH5, "Emmitsburg (PCH)"        },
+    {0x8086, 0xA1A3,    SMBC_OPS_IDX_ICH5, "Lewisburg (PCH)"         },
+    {0x8086, 0xA223,    SMBC_OPS_IDX_ICH5, "Lewisburg Super (PCH)"   },
+    {0x8086, 0xA2A3,    SMBC_OPS_IDX_ICH5, "Kaby Lake (PCH-H)"       },
+    {0x8086, 0x31D4,    SMBC_OPS_IDX_ICH5, "Gemini Lake (SOC)"       },
+    {0x8086, 0xA323,    SMBC_OPS_IDX_ICH5, "Cannon Lake-H (PCH)"     },
+    {0x8086, 0x9DA3,    SMBC_OPS_IDX_ICH5, "Cannon Lake-LP (PCH)"    },
+    {0x8086, 0x18DF,    SMBC_OPS_IDX_ICH5, "Cedar Fork (PCH)"        },
+    {0x8086, 0x34A3,    SMBC_OPS_IDX_ICH5, "Ice Lake-LP (PCH)"       },
+    {0x8086, 0x38A3,    SMBC_OPS_IDX_ICH5, "Ice Lake-N (PCH)"        },
+    {0x8086, 0x02A3,    SMBC_OPS_IDX_ICH5, "Comet Lake (PCH)"        },
+    {0x8086, 0x06A3,    SMBC_OPS_IDX_ICH5, "Comet Lake-H (PCH)"      },
+    {0x8086, 0x4B23,    SMBC_OPS_IDX_ICH5, "Elkhart Lake (PCH)"      },
+    {0x8086, 0xA0A3,    SMBC_OPS_IDX_ICH5, "Tiger Lake-LP (PCH)"     },
+    {0x8086, 0x43A3,    SMBC_OPS_IDX_ICH5, "Tiger Lake-H (PCH)"      },
+    {0x8086, 0x4DA3,    SMBC_OPS_IDX_ICH5, "Jasper Lake (SOC)"       },
+    {0x8086, 0xA3A3,    SMBC_OPS_IDX_ICH5, "Comet Lake-V (PCH)"      },
+    {0x8086, 0x7AA3,    SMBC_OPS_IDX_ICH5, "Alder Lake-S (PCH)"      },
+    {0x8086, 0x51A3,    SMBC_OPS_IDX_ICH5, "Alder Lake-P (PCH)"      },
+    {0x8086, 0x54A3,    SMBC_OPS_IDX_ICH5, "Alder Lake-M (PCH)"      },
+
+    // AMD SMBUS
+//  {0x1022, 0x780B,                    0, ""                        },
+    {0x1022, 0x790B, SMBC_OPS_IDX_FCH_ZEN, "AMD FCH (Zen)",          },
 };
 
 void print_smbus_startup_info(void) {
@@ -113,7 +121,7 @@ void print_smbus_startup_info(void) {
         return;
     }
 
-    smbcontrollers[index].get_adr();
+    smbcontrollerops[smbcontrollers[index].ops].get_adr();
 
     for (spdidx = 0; spdidx < MAX_SPD_SLOT; spdidx++) {
 
