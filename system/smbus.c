@@ -23,8 +23,11 @@ unsigned short smbusbase;
 static int8_t spd_page = -1;
 static int8_t last_adr = -1;
 
-static spd_info parse_spd_ddr (uint8_t smb_idx, uint8_t slot_idx);
+static spd_info parse_spd_drdram(uint8_t smb_idx, uint8_t slot_idx);
+static spd_info parse_spd_sdram(uint8_t smb_idx, uint8_t slot_idx);
+static spd_info parse_spd_ddr(uint8_t smb_idx, uint8_t slot_idx);
 static spd_info parse_spd_ddr2(uint8_t smb_idx, uint8_t slot_idx);
+static spd_info parse_spd_ddr2_fbdimm(uint8_t smb_idx, uint8_t slot_idx);
 static spd_info parse_spd_ddr3(uint8_t smb_idx, uint8_t slot_idx);
 static spd_info parse_spd_ddr4(uint8_t smb_idx, uint8_t slot_idx);
 static spd_info parse_spd_ddr5(uint8_t smb_idx, uint8_t slot_idx);
@@ -132,11 +135,22 @@ void print_smbus_startup_info(void) {
                 case 0x0B: // DDR3
                     curspd = parse_spd_ddr3(index, spdidx);
                     break;
+                case 0x09: // DDR2 FB-DIMM
+                    curspd = parse_spd_ddr2_fbdimm(index, spdidx);
+                    break;
                 case 0x08: // DDR2
                     curspd = parse_spd_ddr2(index, spdidx);
                     break;
                 case 0x07: // DDR
                     curspd = parse_spd_ddr(index, spdidx);
+                    break;
+                case 0x04: // SDRAM
+                    curspd = parse_spd_sdram(index, spdidx);
+                    break;
+                case 0x01: // Possibly Direct Rambus DRAM
+                    if (get_spd(index, spdidx, 0) < 4) { // Simple heuristic used by Linux i2c-tools' decode-dimms.
+                        curspd = parse_spd_drdram(index, spdidx);
+                    }
                     break;
             }
 
@@ -332,11 +346,11 @@ static spd_info parse_spd_ddr4(uint8_t smb_idx, uint8_t slot_idx)
 
     // Compute module size in MB with shifts
     spdi.module_size = 1 << (
-                             ((get_spd(smb_idx, slot_idx, 4) & 0xF) + 5)  +
-                             ((get_spd(smb_idx, slot_idx, 13) & 0x7) + 3)  -
-                             ((get_spd(smb_idx, slot_idx, 12) & 0x7) + 2)  +
-                             ((get_spd(smb_idx, slot_idx, 12) >> 3) & 0x7) +
-                             ((get_spd(smb_idx, slot_idx, 6) >> 4) & 0x7)
+                             ((get_spd(smb_idx, slot_idx, 4) & 0xF) + 5)   +  // Total SDRAM capacity: (256 Mbits << byte4[3:0] with an oddity for values >= 8) / 1 KB
+                             ((get_spd(smb_idx, slot_idx, 13) & 0x7) + 3)  -  // Primary Bus Width: 8 << byte13[2:0]
+                             ((get_spd(smb_idx, slot_idx, 12) & 0x7) + 2)  +  // SDRAM Device Width: 4 << byte12[2:0]
+                             ((get_spd(smb_idx, slot_idx, 12) >> 3) & 0x7) +  // Number of Ranks: byte12[5:3]
+                             ((get_spd(smb_idx, slot_idx, 6) >> 4) & 0x7)     // Die count - 1: byte6[6:4]
                             );
 
     spdi.hasECC = (((get_spd(smb_idx, slot_idx, 13) >> 3) & 1) == 1);
@@ -385,7 +399,7 @@ static spd_info parse_spd_ddr4(uint8_t smb_idx, uint8_t slot_idx)
     }
 
     // Module manufacturer
-    spdi.jedec_code = (get_spd(smb_idx, slot_idx, 320) & 0x1F) << 8;
+    spdi.jedec_code = ((uint16_t)(get_spd(smb_idx, slot_idx, 320) & 0x1F)) << 8;
     spdi.jedec_code |= get_spd(smb_idx, slot_idx, 321) & 0x7F;
 
     // Module SKU
@@ -425,10 +439,10 @@ static spd_info parse_spd_ddr3(uint8_t smb_idx, uint8_t slot_idx)
 
     // Compute module size in MB with shifts
     spdi.module_size = 1 << (
-                             ((get_spd(smb_idx, slot_idx, 4) & 0xF) + 5)  +
-                             ((get_spd(smb_idx, slot_idx, 8) & 0x7) + 3)  -
-                             ((get_spd(smb_idx, slot_idx, 7) & 0x7) + 2)  +
-                             ((get_spd(smb_idx, slot_idx, 7) >> 3) & 0x7)
+                             ((get_spd(smb_idx, slot_idx, 4) & 0xF) + 5)  +  // Total SDRAM capacity: (256 Mbits << byte4[3:0]) / 1 KB
+                             ((get_spd(smb_idx, slot_idx, 8) & 0x7) + 3)  -  // Primary Bus Width: 8 << byte8[2:0]
+                             ((get_spd(smb_idx, slot_idx, 7) & 0x7) + 2)  +  // SDRAM Device Width: 4 << byte7[2:0]
+                             ((get_spd(smb_idx, slot_idx, 7) >> 3) & 0x7)    // Number of Ranks: byte7[5:3]
                             );
 
     spdi.hasECC = (((get_spd(smb_idx, slot_idx, 8) >> 3) & 1) == 1);
@@ -472,7 +486,7 @@ static spd_info parse_spd_ddr3(uint8_t smb_idx, uint8_t slot_idx)
     }
 
     // Module manufacturer
-    spdi.jedec_code= (get_spd(smb_idx, slot_idx, 117) & 0x1F) << 8;
+    spdi.jedec_code  = ((uint16_t)(get_spd(smb_idx, slot_idx, 117) & 0x1F)) << 8;
     spdi.jedec_code |= get_spd(smb_idx, slot_idx, 118) & 0x7F;
 
     // Module SKU
@@ -494,6 +508,59 @@ static spd_info parse_spd_ddr3(uint8_t smb_idx, uint8_t slot_idx)
 
     bcd = get_spd(smb_idx, slot_idx, 121);
     spdi.fab_week =  bcd - 6 * (bcd >> 4);
+
+    spdi.isValid = true;
+
+    return spdi;
+}
+
+static spd_info parse_spd_ddr2_fbdimm(uint8_t smb_idx, uint8_t slot_idx)
+{
+    spd_info spdi;
+
+    uint8_t bcd;
+    int8_t j;
+
+    spdi.type = "DDR2 FB-DIMM";
+    spdi.slot_num = slot_idx;
+    spdi.sku_len = 0;
+    spdi.XMP = 0;
+
+    // Compute module size with shifts
+    uint8_t spd_byte4 = get_spd(smb_idx, slot_idx, 4); // Bits 7-5 (Row Address Bits) + 12, bits 4-2 (Column Address Bits) + 9, bits 1-0 (Number of Banks) >> 2.
+    uint8_t spd_byte7 = get_spd(smb_idx, slot_idx, 7); // Bits 5-3 (Number of Ranks), bits 2-0 (SDRAM Device Width) >> 2.
+
+    //                  Number of Ranks              Row Address Bits   Column Address Bits     Mask     Number of banks
+    spdi.module_size  = (((spd_byte7 >> 3) & 7) << (((spd_byte4 >> 5) + ((spd_byte4 >> 2) & 7)) & 31)) * ((spd_byte4 & 3) << 2);
+
+    spdi.hasECC = ((get_spd(smb_idx, slot_idx, 81) >> 1) == 1);
+
+    // Module speed
+    spdi.freq = 0; // TODO
+
+    // Module manufacturer
+    spdi.jedec_code  = ((uint16_t)(get_spd(smb_idx, slot_idx, 117) & 0x1F)) << 8;
+    spdi.jedec_code |= get_spd(smb_idx, slot_idx, 118) & 0x7F;
+
+    // Module SKU
+    uint8_t sku_byte;
+    for (j = 0; j < 18; j++) {
+        sku_byte = get_spd(smb_idx, slot_idx, 128 + j);
+
+        if (sku_byte <= 0x20 && j > 0 && spdi.sku[j - 1] <= 0x20) {
+            spdi.sku_len--;
+            break;
+        } else {
+            spdi.sku[j] = sku_byte;
+            spdi.sku_len++;
+        }
+    }
+
+    bcd = get_spd(smb_idx, slot_idx, 120);
+    spdi.fab_year = bcd - 6 * (bcd >> 4);
+
+    bcd = get_spd(smb_idx, slot_idx, 121);
+    spdi.fab_week = bcd - 6 * (bcd >> 4);
 
     spdi.isValid = true;
 
@@ -554,7 +621,7 @@ static spd_info parse_spd_ddr2(uint8_t smb_idx, uint8_t slot_idx)
         }
     }
 
-    spdi.jedec_code = (contcode - 64) << 8;
+    spdi.jedec_code  = ((uint16_t)(contcode - 64)) << 8;
     spdi.jedec_code |= get_spd(smb_idx, slot_idx, contcode) & 0x7F;
 
     // Module SKU
@@ -571,10 +638,10 @@ static spd_info parse_spd_ddr2(uint8_t smb_idx, uint8_t slot_idx)
         }
     }
 
-    uint8_t bcd = get_spd(smb_idx, slot_idx, 94);
+    uint8_t bcd = get_spd(smb_idx, slot_idx, 93);
     spdi.fab_year = bcd - 6 * (bcd >> 4);
 
-    bcd = get_spd(smb_idx, slot_idx, 93);
+    bcd = get_spd(smb_idx, slot_idx, 94);
     spdi.fab_week = bcd - 6 * (bcd >> 4);
 
     spdi.isValid = true;
@@ -656,6 +723,112 @@ static spd_info parse_spd_ddr(uint8_t smb_idx, uint8_t slot_idx)
     }
 
     uint8_t bcd = get_spd(smb_idx, slot_idx, 93);
+    spdi.fab_year = bcd - 6 * (bcd >> 4);
+
+    bcd = get_spd(smb_idx, slot_idx, 94);
+    spdi.fab_week = bcd - 6 * (bcd >> 4);
+
+    spdi.isValid = true;
+
+    return spdi;
+}
+
+// FIXME RDRAM, SDRAM and DDR SPD are pretty close to each other... some potential for code factorization !
+
+static spd_info parse_spd_sdram(uint8_t smb_idx, uint8_t slot_idx)
+{
+    spd_info spdi;
+
+    uint8_t bcd;
+
+    spdi.type = "SDRAM";
+    spdi.slot_num = slot_idx;
+    spdi.sku_len = 0;
+    spdi.XMP = 0;
+
+    spdi.module_size = 0; // TODO
+
+    spdi.hasECC = ((get_spd(smb_idx, slot_idx, 11) >> 1) == 1);
+
+    spdi.freq = 0; // TODO
+
+    // Module manufacturer
+    uint8_t contcode;
+    for (contcode = 64; contcode < 72; contcode++) {
+        if (get_spd(smb_idx, slot_idx, contcode) != 0x7F) {
+            break;
+        }
+    }
+
+    spdi.jedec_code  = ((uint16_t)(contcode - 64)) << 8;
+    spdi.jedec_code |= get_spd(smb_idx, slot_idx, contcode) & 0x7F;
+
+    // Module SKU
+    uint8_t sku_byte;
+    for (int j = 0; j < 18; j++) {
+        sku_byte = get_spd(smb_idx, slot_idx, 73 + j);
+
+        if (sku_byte <= 0x20 && j > 0 && spdi.sku[j - 1] <= 0x20) {
+            spdi.sku_len--;
+            break;
+        } else {
+            spdi.sku[j] = sku_byte;
+            spdi.sku_len++;
+        }
+    }
+
+    bcd = get_spd(smb_idx, slot_idx, 93);
+    spdi.fab_year = bcd - 6 * (bcd >> 4);
+
+    bcd = get_spd(smb_idx, slot_idx, 94);
+    spdi.fab_week = bcd - 6 * (bcd >> 4);
+
+    spdi.isValid = true;
+
+    return spdi;
+}
+
+static spd_info parse_spd_drdram(uint8_t smb_idx, uint8_t slot_idx)
+{
+    spd_info spdi;
+
+    spdi.type = "DRDRAM";
+    spdi.slot_num = slot_idx;
+    spdi.sku_len = 0;
+    spdi.XMP = 0;
+
+    spdi.module_size = 0; // TODO
+
+    spdi.hasECC = 0; // TODO
+
+    spdi.freq = 0; // TODO
+
+    // Module manufacturer
+    uint8_t contcode;
+    for (contcode = 64; contcode < 72; contcode++) {
+        if (get_spd(smb_idx, slot_idx, contcode) != 0x7F) {
+            break;
+        }
+    }
+
+    spdi.jedec_code  = ((uint16_t)(contcode - 64)) << 8;
+    spdi.jedec_code |= get_spd(smb_idx, slot_idx, contcode) & 0x7F;
+
+    // Module SKU
+    uint8_t sku_byte;
+    for (int j = 0; j < 18; j++) {
+        sku_byte = get_spd(smb_idx, slot_idx, 73 + j);
+
+        if (sku_byte <= 0x20 && j > 0 && spdi.sku[j - 1] <= 0x20) {
+            spdi.sku_len--;
+            break;
+        } else {
+            spdi.sku[j] = sku_byte;
+            spdi.sku_len++;
+        }
+    }
+
+    bcd = get_spd(smb_idx, slot_idx, 93);
     spdi.fab_year = bcd - 6 * (bcd >> 4);
 
     bcd = get_spd(smb_idx, slot_idx, 94);

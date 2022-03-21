@@ -61,14 +61,14 @@ struct pci_smbus_controller{
 
 typedef struct spd_infos {
     bool        isValid;
-    uint32_t    module_size;
     uint8_t     slot_num;
-    char        *type;
     uint16_t    jedec_code;
+    uint32_t    module_size;
+    char        *type;
     char        sku[32];
     uint8_t     sku_len;
-    uint16_t    freq;
     uint8_t     XMP;
+    uint16_t    freq;
     bool        hasECC;
     uint8_t     fab_year;
     uint8_t     fab_week;
