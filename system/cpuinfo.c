@@ -19,6 +19,7 @@
 #include "cpuid.h"
 #include "io.h"
 #include "tsc.h"
+#include "debug.h"
 
 #include "boot.h"
 #include "config.h"
@@ -32,7 +33,8 @@
 // Constants
 //------------------------------------------------------------------------------
 
-#define PIT_TICKS_50mS      59659       // PIT clock is 1.193182MHz
+#define CLOCK_MEASURE_PERIOD_MS 50
+#define PIT_TICKS               ((int)(CLOCK_MEASURE_PERIOD_MS * 1193.182))       // PIT clock is 1.193182MHz
 #define BENCH_MIN_START_ADR 0x1000000   // 16MB
 
 //------------------------------------------------------------------------------
@@ -867,27 +869,40 @@ static void measure_cpu_speed(void)
     }
 
     // Set up timer
-    outb((inb(0x61) & ~0x02) | 0x01, 0x61);
     outb(0xb0, 0x43);
-    outb(PIT_TICKS_50mS & 0xff, 0x42);
-    outb(PIT_TICKS_50mS >> 8, 0x42);
+    outb((uint8_t)(PIT_TICKS & 0xff), 0x42);
+    outb((uint8_t)(PIT_TICKS >> 8), 0x42);
+    outb((inb(0x61) & 0x0c) | 0x01, 0x61);
+    printf(5, 0, "Initial C2_CAPR LSB: %x", inb(0x42));
+    printf(6, 0, "Initial C2_CAPR MSB: %x", inb(0x42));
 
     uint32_t start_time;
     rdtscl(start_time);
 
     int loops = 0;
+    int t;
     do {
         loops++;
-    } while ((inb(0x61) & 0x20) == 0);
+        printf(1, 0, "loops:       %i", loops);
+        printf(2, 0, "NMI_STS_CNT: %x", t = inb(0x61));
+        printf(3, 0, "C2_CAPR LSB: %x", inb(0x42));
+        printf(4, 0, "C2_CAPR MSB: %x", inb(0x42));
+    } while ((t & 0x20) == 0 && loops < 100000);
 
     uint32_t end_time;
     rdtscl(end_time);
 
     uint32_t run_time = end_time - start_time;
 
+    printf(1, 0, "loops:       %i", loops);
+    printf(2, 0, "NMI_STS_CNT: %x", inb(0x61));
+    printf(3, 0, "C2_CAPR LSB: %x", inb(0x42));
+    printf(4, 0, "C2_CAPR MSB: %x", inb(0x42));
+    while (get_key() == 0) {}
+
     // Make sure we have a credible result
-    if (loops >= 4 && run_time >= 50000) {
-       clks_per_msec = run_time / 50;
+    if (loops < 100000 && loops >= 4 && run_time >= 50000) {
+       clks_per_msec = run_time / CLOCK_MEASURE_PERIOD_MS;
     }
 }
 
